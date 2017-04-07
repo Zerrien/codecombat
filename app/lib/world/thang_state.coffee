@@ -63,17 +63,21 @@ module.exports = class ThangState
   getStateForProp: (prop) ->
     # Get the property, whether we have it stored in @props or in @trackedPropertyValues. Optimize it.
     # Figured based on http://jsperf.com/object-vs-array-vs-native-linked-list/13 that it should be faster with small arrays to do the indexOf reads (each up to 24x faster) than to do a single object read, and then we don't have to maintain an extra @props object; just keep array
-    propIndex = @trackedPropertyKeys.indexOf prop
+    #console.log @, prop, @thang.trackedPropertyKeys
+    propIndex = @thang.trackedPropertiesKeys.indexOf prop
+    return @props[propIndex]
+    ###
     if propIndex is -1
       initialPropIndex = @thang.unusedTrackedPropertyKeys.indexOf prop
       return null if initialPropIndex is -1
       return @thang.unusedTrackedPropertyValues[initialPropIndex]
     value = @props[propIndex]
     return value if value isnt undefined or @hasRestored
-    return @props[propIndex] = @getStoredProp propIndex
+    return @props[propIndex] = @getStoredProp propIndex###
 
   restore: ->
     # Restore trackedProperties' values to @thang, retrieving them from @trackedPropertyValues if needed. Optimize it.
+    ###
     return @ if @thang._state is @ and not @thang.partialState
     unless @hasRestored  # Restoring in a deserialized World for first time
       for prop, propIndex in @thang.unusedTrackedPropertyKeys when @trackedPropertyKeys.indexOf(prop) is -1
@@ -95,10 +99,34 @@ module.exports = class ThangState
     @thang.partialState = false
     @thang.stateChanged = true
     @
+    ###
+    # TODO: I'm sure the code above is important
+    for prop, propIndex in @thang.trackedPropertiesKeys
+      value = @props[propIndex]
+      @thang[prop] = value
+    @thang.partialState = false
+    @thang.stateChanged = true
+    @
 
   restorePartial: (ratio) ->
     # Don't think we need to worry about unusedTrackedPropertyValues here.
     # If it's not tracked yet, it'll very rarely partially change between frames; we can afford to miss the first one.
+    inverse = 1 - ratio
+    for prop, propIndex in @thang.trackedPropertiesKeys when prop is 'pos' or prop is 'rotation'
+      #console.log prop, propIndex, @, inverse
+      value = @props[propIndex]
+      if prop is 'pos'
+        @thang.pos = @thang.pos.copy()
+        @thang.pos.x = inverse * @thang.pos.x + ratio * value.x
+        @thang.pos.y = inverse * @thang.pos.y + ratio * value.y
+        @thang.pos.z = inverse * @thang.pos.z + ratio * value.z
+      else if prop is 'rotation'
+        @thang.rotation = inverse * @thang.rotation + ratio * value
+      @thang.partialState = true
+    @thang.stateChanged = true
+    @
+    # TODO: I'm sure the code below is important
+    ###
     inverse = 1 - ratio
     for prop, propIndex in @trackedPropertyKeys when prop is 'pos' or prop is 'rotation'
       if @hasRestored
@@ -121,6 +149,7 @@ module.exports = class ThangState
       @thang.partialState = true
     @thang.stateChanged = true
     @
+    ###
 
   serialize: (frameIndex, trackedPropertyIndices, trackedPropertyTypes, trackedPropertyValues, specialValuesToKeys, specialKeysToValues) ->
     # Performance hotspot--called once per tracked property per Thang per frame. Optimize the crap out of it.

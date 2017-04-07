@@ -122,18 +122,21 @@ exports.config =
         'javascripts/vendor.js': [
           regJoin('^vendor/scripts/(?!(Box2d|coffeescript|difflib|diffview|jasmine|co|' + gameLibraries + '))')
           regJoin('^bower_components/(?!(aether|d3|treema|three.js|esper.js|jquery-ui|' + gameLibraries  + '))')
+          regJoin('^vendor/scripts/Box2dWeb-2.1.a.3')
           'bower_components/treema/treema-utils.js'
         ]
 
         'javascripts/game-libraries.js': [
           regJoin('^vendor/scripts/(' + gameLibraries + ')')
           regJoin('^bower_components/(' + gameLibraries  + ')')
+          regJoin('^vendor/scripts/Box2dWeb-2.1.a.3')
 
         ],
 
         'javascripts/whole-vendor.js': if TRAVIS then [
           regJoin('^vendor/scripts/(?!(Box2d|jasmine|register-game-libraries))')
           regJoin('^bower_components/(?!aether|esper.js)')
+          regJoin('^vendor/scripts/Box2dWeb-2.1.a.3')
         ] else []
 
         #- Other vendor libraries in separate bunches

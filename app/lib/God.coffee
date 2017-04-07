@@ -26,7 +26,7 @@ module.exports = class God extends CocoClass
 
     # Angels are all given access to this.
     @angelsShare = {
-      workerCode: options.workerCode or '/javascripts/workers/worker_world.js'  # Either path or function
+      #workerCode: options.workerCode or '/javascripts/workers/worker_world.js'  # Either path or function
       headless: options.headless  # Whether to just simulate the goals, or to deserialize all simulation results
       spectate: options.spectate
       god: @
@@ -48,7 +48,7 @@ module.exports = class God extends CocoClass
     else if window.application.isIPadApp
       angelCount = 1
     else
-      angelCount = 2
+      angelCount = 1
 
     # Don't generate all Angels at once.
     _.delay (=> new Angel @angelsShare unless @destroyed), 250 * i for i in [0 ... angelCount]
@@ -113,7 +113,8 @@ module.exports = class God extends CocoClass
       indefiniteLength: @indefiniteLength and realTime
     }
     @angelsShare.workQueue.push work
-    angel.workIfIdle() for angel in @angelsShare.angels
+    #angel.workIfIdle() for angel in @angelsShare.angels
+    angel.startWork() for angel in @angelsShare.angels
     work
 
   getUserCodeMap: (spells) ->

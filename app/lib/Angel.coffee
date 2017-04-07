@@ -24,6 +24,7 @@ module.exports = class Angel extends CocoClass
 
   constructor: (@shared) ->
     super()
+    @allLogs = []
     @say 'Got my wings.'
     isIE = window.navigator and (window.navigator.userAgent.search('MSIE') isnt -1 or window.navigator.appName is 'Microsoft Internet Explorer')
     slowerSimulations = isIE  #or @shared.headless
@@ -35,7 +36,6 @@ module.exports = class Angel extends CocoClass
       @abortTimeoutDuration *= 10
     @initialized = false
     @running = false
-    @allLogs = []
     @hireWorker()
     @shared.angels.push @
     @listenTo @shared.gameUIState.get('realTimeInputEvents'), 'add', @onAddRealTimeInputEvent
@@ -46,16 +46,17 @@ module.exports = class Angel extends CocoClass
     super()
 
   workIfIdle: ->
+    @say "idle working"
     @doWork() unless @running
 
   # say: debugging stuff, usually off; log: important performance indicators, keep on
-  say: (args...) -> #@log args...
+  say: (args...) -> @log args...
   log: ->
     # console.info.apply is undefined in IE9, CoffeeScript splats invocation won't work.
     # http://stackoverflow.com/questions/5472938/does-ie9-support-console-log-and-is-it-a-real-function
     message = "|#{@shared.godNick}'s #{@nick}|"
     message += " #{arg}" for arg in arguments
-    console.info message
+    console.info "%c" + message, "color: orange"
     @allLogs.push message
 
   testWorker: =>
@@ -66,6 +67,7 @@ module.exports = class Angel extends CocoClass
     @worker.postMessage func: 'reportIn'
 
   onWorkerMessage: (event) =>
+    @say "The worker has said something."
     return @say 'Currently aborting old work.' if @aborting and event.data.type isnt 'abort'
 
     switch event.data.type
@@ -74,6 +76,7 @@ module.exports = class Angel extends CocoClass
         unless @initialized
           @log "Worker initialized after #{(new Date()) - @worker.creationTime}ms"
           @initialized = true
+          @say "Worker said initialized"
           @doWork()
 
       # We watch over the worker as it loads the world frames to make sure it doesn't infinitely loop.
@@ -104,6 +107,7 @@ module.exports = class Angel extends CocoClass
         @aborting = false
         @running = false
         _.remove @shared.busyAngels, @
+        @say "worker said aborted"
         @doWork()
 
       # We pay attention to certain progress indicators as the world loads.
@@ -176,6 +180,7 @@ module.exports = class Angel extends CocoClass
     clearTimeout @condemnTimeout
     clearInterval @purgatoryTimer
     @condemnTimeout = @purgatoryTimer = null
+    @say "finished working, do more working"
     @doWork()
 
   finalizePreload: ->
@@ -262,14 +267,138 @@ module.exports = class Angel extends CocoClass
     unless Worker?
       unless @initialized
         @initialized = true
+        @say "hiring initialized worker"
         @doWork()
       return null
     return if @worker
     @say 'Hiring worker.'
-    @worker = new Worker @shared.workerCode
-    @worker.addEventListener 'error', errors.onWorkerError
-    @worker.addEventListener 'message', @onWorkerMessage
-    @worker.creationTime = new Date()
+    @deserializationQueue = []
+    #@worker = new Worker @shared.workerCode
+    #@worker.addEventListener 'error', errors.onWorkerError
+    #@worker.addEventListener 'message', @onWorkerMessage
+    #@worker.creationTime = new Date()
+    ###
+    @work = @shared.workQueue.shift()
+    return _.defer @simulateSync, @work if @work.synchronous
+    @say 'Running world...'
+    @running = true
+    @shared.busyAngels.push @
+    
+    @worker.postMessage func: 'runWorld', args: @work
+    ###
+  startWork: ->
+    @work = @shared.workQueue.shift()
+    postedErrors = {}
+    @t0 = new Date()
+    logsLogged = 0
+
+    try
+      @world = new World(@work.userCodeMap)
+      @world.levelSessionIDs = @work.levelSessionIDs
+      @world.submissionCount = @work.submissionCount
+      @world.fixedSeed = @work.fixedSeed
+      @world.flagHistory = @work.flagHistory or []
+      @world.realTimeInputEvents = @work.realTimeInputEvents or []
+      @world.difficulty = @work.difficulty or 0
+      if(@work.level)
+        @world.loadFromLevel(@work.level, true)
+      @world.preloading = @work.preload
+      @world.headless = @work.headless
+      @world.realTime = @work.realTime
+      @world.indefiniteLength = @work.indefiniteLength
+      @world.justBegin = @work.justBegin
+      @goalManager = new GoalManager(@world)
+      @goalManager.setGoals(@work.goals)
+      @goalManager.setCode(@work.userCodeMap)
+      @goalManager.worldGenerationWillBegin()
+      @world.setGoalManager(@goalManager)
+    catch error
+      return
+    Math.random = @world.rand.randf
+    Aether.replaceBuiltin("Math", Math)
+    # ???
+    #var replacedLoDash = _.runInContext(self);
+    #for(var key in replacedLoDash)
+    #  _[key] = replacedLoDash[key]; 
+
+    # self.postMessage({type: 'start-load-frames'});
+    clearTimeout @condemnTimeout
+    @world.loadFrames(@onWorldLoaded, @onWorldError, @onWorldLoadProgress, @onWorldPreloaded)
+  destroyWorld: () ->
+    @world.goalManager.destroy()
+    @world.destroy()
+    @world = null
+
+  trySerialize: () ->
+    try
+      serialized = @world.serialize()
+    catch error
+      console.log("World serialization error:", error.toString() + "\n" + error.stack or error.stackTrace)
+      return false
+    return serialized
+
+  onWorldLoaded: (args) =>
+    return if @world.framesSerializedSoFar is @world.frames.length
+    @goalManager.worldGenerationEnded() if @world.ended
+    t1 = new Date()
+    diff = t1 - @t0
+    goalStates = @goalManager.getGoalStates()
+    totalFrames = @world.totalFrames
+    totalFrames = @world.frames.length if @world.indefiniteLength
+    if @world.ended
+      overallStatus = @goalManager.checkOverallStatus()
+      lastFrameHash = @world.frames[totalFrames - 2].hash
+      simulationFrameRate = @world.frames.length / diff * 1000 * 30 / @world.frameRate
+      clearTimeout @condemnTimeout
+      @beholdGoalStates
+        goalStates: goalStates
+        overallStatus: overallStatus
+        preload: false
+        totalFrames: totalFrames
+        lastFrameHash: lastFrameHash
+        simulationFrameRate: simulationFrameRate
+      if @world.headless
+        return console.log("headless simulation stuff here")
+    worldEnded = @world.ended
+
+    #serialized = @trySerialize()
+    #transferableSupported = @transferableSupported()
+    # TODO: TransferableSupported?
+    transferableSupported = false
+    #unless serialized
+    #  @destroyWorld()
+    #  return
+    #if worldEnded
+      # Make sure we clean up memory as soon as possible, since we just used the most ever and don't want to crash.
+    #  @destroyWorld()
+    t2 = new Date()
+    messageType = if worldEnded then 'new-world' else 'some-frames-serialized'
+
+    @streamingWorld = @world
+    @finishBeholdingWorld(goalStates)(@world)
+
+    if worldEnded
+      t3 = new Date()
+      console.log("And it was so: (" + (diff / totalFrames).toFixed(3) + "ms per frame,", totalFrames, "frames)\nSimulation   :", diff + "ms \nSerialization:", (t2 - t1) + "ms\nDelivery     :", (t3 - t2) + "ms\nFPS          :", simulationFrameRate.toFixed(1))
+    
+
+  onWorldError: (args) =>
+
+  onWorldLoadProgress: (progress) =>
+    #console.log "ON WORLD LOAD PROGRESS", progress
+    #self.postMessage({type: 'world-load-progress-changed', progress: progress});
+    tProgress = if @work.indefiniteLength then Math.min(progress, 0.9) else progress
+    @publishGodEvent('world-load-progress-changed', {progress: tProgress})
+    #@publishGodEvent 'world-load-progress-changed', { progress }
+
+    unless progress is 1 or @work.preload or @work.headless or @work.synchronous or @deserializationQueue.length or (@shared.firstWorld and not @shared.spectate)
+      #@worker.postMessage func: 'serializeFramesSoFar'  # Stream it!
+      return unless @world
+      return if @world.framesSerializedSoFar is @world.frames.length
+      @onWorldLoaded()
+      @world.framesSerializedSoFar = @world.frames.length
+
+  onWorldPreloaded: (args) =>
 
   onFlagEvent: (e) ->
     return unless @running and @work.realTime

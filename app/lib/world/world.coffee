@@ -100,6 +100,7 @@ module.exports = class World
     @totalFrames = 2 if @justBegin
     console.log 'Warning: loadFrames called on empty World (no thangs).' unless @thangs.length
     continueLaterFn = =>
+      console.log "Loading new frames"
       @loadFrames(loadedCallback, errorCallback, loadProgressCallback, preloadedCallback, skipDeferredLoading, loadUntilFrame) unless @destroyed
     if @realTime and not @countdownFinished
       @realTimeSpeedFactor = 1
@@ -118,6 +119,8 @@ module.exports = class World
     @lastRealTimeUpdate ?= 0
     frameToLoadUntil = if loadUntilFrame then loadUntilFrame + 1 else @totalFrames  # Might stop early if debugging.
     i = @frames.length
+
+    
     while true
       if @indefiniteLength
         break if not @realTime # realtime has been stopped
@@ -136,6 +139,7 @@ module.exports = class World
         for error in (@unhandledRuntimeErrors ? [])
           return unless errorCallback error  # errorCallback tells us whether the error is recoverable
         @unhandledRuntimeErrors = []
+    
     @finishLoadingFrames loadProgressCallback, loadedCallback, preloadedCallback
 
   finishLoadingFrames: (loadProgressCallback, loadedCallback, preloadedCallback) ->
