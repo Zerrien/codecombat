@@ -7,15 +7,6 @@ module.exports = class WorldFrame
     @thangStateMap = {}
     @setState() if @world
 
-  getNextFrame: ->
-    # Optimized. Must be called while thangs are current at this frame.
-    nextTime = @time + @world.dt
-    return null if nextTime > @world.lifespan and not @world.indefiniteLength
-    @hash = @world.rand.seed
-    @hash += system.update() for system in @world.systems
-    nextFrame = new WorldFrame(@world, nextTime)
-    return nextFrame
-
   setState: ->
     for thang in @world.thangs when not thang.stateless
       @thangStateMap[thang.id] = thang.getState()

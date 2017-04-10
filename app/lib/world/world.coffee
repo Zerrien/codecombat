@@ -58,12 +58,23 @@ module.exports = class World
     if @ended
       frame = frames[frameIndex]
     else if frameIndex
-      frame = frames[frameIndex - 1].getNextFrame()
+      #frame = frames[frameIndex - 1].getNextFrame()
+      frame = @renderNextFrame()
       frames.push frame
     else
       frame = frames[0]
     @age = frameIndex * @dt
     frame
+
+  renderNextFrame: () ->
+    #nextTime = frameIndex @dt
+    curFrame = @frames[@frames.length - 1]
+    nextTime = curFrame.time + @dt
+    return null if nextTime > @lifespan and not @indefiniteLength
+    curFrame.hash = @rand.seed
+    curFrame.hash += system.update() for system in @systems
+    nextFrame = new WorldFrame(@, nextTime)
+    return nextFrame
 
   getThangByID: (id) ->
     @thangMap[id]
@@ -96,6 +107,17 @@ module.exports = class World
     (@unhandledRuntimeErrors ?= []).push error
 
   loadFrames: (loadedCallback, errorCallback, loadProgressCallback, preloadedCallback, skipDeferredLoading, loadUntilFrame) ->
+    return if @aborted
+    #@totalFrames = 2 if @justBegin
+    i = 0
+    interval = setInterval(() =>
+      if i >= @totalFrames
+        @finishLoadingFrames loadProgressCallback, loadedCallback, preloadedCallback
+        window.clearInterval(interval)
+        return
+      @getFrame i++
+    , 10)
+    ###
     return if @aborted
     @totalFrames = 2 if @justBegin
     console.log 'Warning: loadFrames called on empty World (no thangs).' unless @thangs.length
@@ -139,8 +161,9 @@ module.exports = class World
         for error in (@unhandledRuntimeErrors ? [])
           return unless errorCallback error  # errorCallback tells us whether the error is recoverable
         @unhandledRuntimeErrors = []
+    ###
+    #@finishLoadingFrames loadProgressCallback, loadedCallback, preloadedCallback
     
-    @finishLoadingFrames loadProgressCallback, loadedCallback, preloadedCallback
 
   finishLoadingFrames: (loadProgressCallback, loadedCallback, preloadedCallback) ->
     unless @debugging
