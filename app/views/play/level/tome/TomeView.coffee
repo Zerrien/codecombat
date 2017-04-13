@@ -48,7 +48,8 @@ module.exports = class TomeView extends CocoView
     super options
     unless options.god or options.level.get('type') is 'web-dev'
       console.error "TomeView created with no God!"
-
+    programmableThangs = _.filter @options.thangs, (t) -> t.isProgrammable and t.programmableMethods
+    @createSpells programmableThangs, programmableThangs[0]?.world  # Do before castButton
   afterRender: ->
     super()
     @worker = @createWorker()
@@ -56,7 +57,7 @@ module.exports = class TomeView extends CocoView
     if @options.level.isType('web-dev')
       if @fakeProgrammableThang = @createFakeProgrammableThang()
         programmableThangs = [@fakeProgrammableThang]
-    @createSpells programmableThangs, programmableThangs[0]?.world  # Do before castButton
+    
     @castButton = @insertSubView new CastButtonView spells: @spells, level: @options.level, session: @options.session, god: @options.god
     @teamSpellMap = @generateTeamSpellMap(@spells)
     unless programmableThangs.length
@@ -98,6 +99,7 @@ module.exports = class TomeView extends CocoView
     return teamSpellMap
 
   createSpells: (programmableThangs, world) ->
+    console.log "When do I create spells?"
     language = @options.session.get('codeLanguage') ? me.get('aceConfig')?.language ? 'python'
     pathPrefixComponents = ['play', 'level', @options.levelID, @options.session.id, 'code']
     @spells ?= {}
@@ -167,6 +169,7 @@ module.exports = class TomeView extends CocoView
     if @options.observing
       difficulty = Math.max 0, difficulty - 1  # Show the difficulty they won, not the next one.
     Backbone.Mediator.publish 'level:set-playing', {playing: false}
+    console.log "Casting a spell!"
     Backbone.Mediator.publish 'tome:cast-spells', {
       @spells,
       preload,

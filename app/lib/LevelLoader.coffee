@@ -30,6 +30,7 @@ reportedLoadErrorAlready = false
 module.exports = class LevelLoader extends CocoClass
 
   constructor: (options) ->
+    console.log "Level Loader here!"
     @t0 = new Date().getTime()
     super()
     @supermodel = options.supermodel
@@ -426,7 +427,7 @@ module.exports = class LevelLoader extends CocoClass
   onSupermodelLoaded: ->
     clearTimeout @loadTimeoutID
     return if @destroyed
-    console.log 'SuperModel for Level loaded in', new Date().getTime() - @t0, 'ms' if LOG
+    console.log 'SuperModel for Level loaded in', new Date().getTime() - @t0, 'ms'
     @loadLevelSounds()
     @denormalizeSession()
 

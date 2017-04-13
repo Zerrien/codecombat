@@ -6,6 +6,7 @@ WorldFrame = require './world_frame'
 Thang = require './thang'
 ThangState = require './thang_state'
 Rand = require './rand'
+utils = require 'core/utils'
 WorldScriptNote = require './world_script_note'
 {now, consolidateThangs, typedArraySupport} = require './world_utils'
 Component = require 'lib/world/component'
@@ -32,6 +33,7 @@ module.exports = class World
   apiProperties: ['age', 'dt']
   realTimeBufferMax: REAL_TIME_BUFFER_MAX / 1000
   constructor: (@userCodeMap, classMap) ->
+    console.log "%cHello, world! I am a new world! A BRAND NEW ONE HOW MANY OF ME ARE THERE?", "color: red"
     # classMap is needed for deserializing Worlds, Thangs, and other classes
     @classMap = classMap ? {Vector: Vector, Rectangle: Rectangle, Thang: Thang, Ellipse: Ellipse, LineSegment: LineSegment}
     Thang.resetThangIDs()
@@ -166,14 +168,16 @@ module.exports = class World
     
 
   finishLoadingFrames: (loadProgressCallback, loadedCallback, preloadedCallback) ->
-    unless @debugging
-      @ended = true
-      system.finish @thangs for system in @systems
+    #unless @debugging
+    @ended = true
+    system.finish @thangs for system in @systems
     if @preloading
       preloadedCallback()
+      console.log "!!!!!Preloading"
     else
       loadProgressCallback? 1
       loadedCallback()
+      console.log "!!!!!Not Preloading"
 
   finishCountdown: (continueLaterFn) -> =>
     return if @destroyed
@@ -391,7 +395,10 @@ module.exports = class World
       continue if scriptNote.invalid
       @scriptNotes.push scriptNote
     return unless @goalManager
-    @goalManager.submitWorldGenerationEvent(channel, event, @frames.length)
+    # yeah this is amazing, spectacular, wonderous, stupendous
+    func = utils.normalizeFunc(@goalManager.backgroundSubscriptions[channel], @goalManager)
+    return unless func
+    func.call(@goalManager, event, @frames.length)
 
   getGoalState: (goalID) ->
     @goalManager.getGoalState(goalID)

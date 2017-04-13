@@ -36,11 +36,7 @@ module.exports = class GoalManager extends CocoClass
       @thangTeams[thang.team] = [] unless @thangTeams[thang.team]
       @thangTeams[thang.team].push(thang.id)
 
-  subscriptions:
-    'god:new-world-created': 'onNewWorldCreated'
-    'god:new-html-goal-states': 'onNewHTMLGoalStates'
-    'level:restarted': 'onLevelRestarted'
-
+  # These have been addressed. (sort of)
   backgroundSubscriptions:
     'world:thang-died': 'onThangDied'
     'world:thang-touched-goal': 'onThangTouchedGoal'
@@ -49,7 +45,8 @@ module.exports = class GoalManager extends CocoClass
     'world:user-code-problem': 'onUserCodeProblem'
     'world:lines-of-code-counted': 'onLinesOfCodeCounted'
 
-  onLevelRestarted: ->
+  onLevelRestarted: (e) ->
+    console.log "GOALMANAGER", "level:restarted", "onLevelRestarted", e
     @goals = []
     @goalStates = {}
     @userCodeMap = {}
@@ -69,13 +66,6 @@ module.exports = class GoalManager extends CocoClass
     @initGoalStates()
     @checkForInitialUserCodeProblems()
 
-  # World generator feeds world events to the goal manager to keep track
-  submitWorldGenerationEvent: (channel, event, frameNumber) ->
-    func = @backgroundSubscriptions[channel]
-    func = utils.normalizeFunc(func, @)
-    return unless func
-    func.call(@, event, frameNumber)
-
   # after world generation, generated goal states
   # are grabbed to send back to main instance
   worldGenerationEnded: (finalFrame) -> @wrapUpGoalStates(finalFrame)
@@ -84,10 +74,12 @@ module.exports = class GoalManager extends CocoClass
   # main instance gets them and updates their existing goal states,
   # passes the word along
   onNewWorldCreated: (e) ->
+    console.log "GOALMANAGER", "god:new-world-created", "onNewWorldCreated", e
     @world = e.world
     @updateGoalStates(e.goalStates) if e.goalStates?
 
   onNewHTMLGoalStates: (e) ->
+    console.log "GOALMANAGER", "god:new-html-goal-states", "onNewHTMLGoalStates", e
     @updateGoalStates(e.goalStates) if e.goalStates?
 
   updateGoalStates: (newGoalStates) ->
@@ -164,6 +156,7 @@ module.exports = class GoalManager extends CocoClass
         @onUserCodeProblem {thang: thang, problem: problem}, 0
 
   onThangDied: (e, frameNumber) ->
+    console.log "GOALMANAGER", "world:thang-died", "onThangDied", e
     for goal in @goals ? []
       @checkKillThangs(goal.id, goal.killThangs, e.thang, frameNumber) if goal.killThangs?
       @checkKillThangs(goal.id, goal.saveThangs, e.thang, frameNumber) if goal.saveThangs?
@@ -173,6 +166,7 @@ module.exports = class GoalManager extends CocoClass
     @updateGoalState(goalID, thang.id, 'killed', frameNumber)
 
   onThangTouchedGoal: (e, frameNumber) ->
+    console.log "GOALMANAGER", "level:thang-touched-goal", "onThangTouchedGoal", e
     for goal in @goals ? []
       @checkArrived(goal.id, goal.getToLocations.who, goal.getToLocations.targets, e.actor, e.touched.id, frameNumber) if goal.getToLocations?
       if goal.getAllToLocations?
@@ -189,6 +183,7 @@ module.exports = class GoalManager extends CocoClass
     @updateGoalState(goalID, thang.id, 'arrived', frameNumber)
 
   onThangLeftMap: (e, frameNumber) ->
+    console.log "GOALMANAGER", "level:thang-left-map", "onThangLeftMap", e
     for goal in @goals ? []
       @checkLeft(goal.id, goal.leaveOffSides.who, goal.leaveOffSides.sides, e.thang, e.side, frameNumber) if goal.leaveOffSides?
       @checkLeft(goal.id, goal.keepFromLeavingOffSides.who, goal.keepFromLeavingOffSides.sides, e.thang, e.side, frameNumber) if goal.keepFromLeavingOffSides?
@@ -199,6 +194,7 @@ module.exports = class GoalManager extends CocoClass
     @updateGoalState(goalID, thang.id, 'left', frameNumber)
 
   onThangCollectedItem: (e, frameNumber) ->
+    console.log "GOALMANAGER", "level:thang-collected-item", "onThangCollectedItem", e
     for goal in @goals ? []
       @checkCollected(goal.id, goal.collectThangs.who, goal.collectThangs.targets, e.actor, e.item.id, frameNumber) if goal.collectThangs?
       @checkCollected(goal.id, goal.keepFromCollectingThangs.who, goal.keepFromCollectingThangs.targets, e.actor, e.item.id, frameNumber) if goal.keepFromCollectingThangs?
@@ -209,6 +205,7 @@ module.exports = class GoalManager extends CocoClass
     @updateGoalState(goalID, itemID, 'collected', frameNumber)
 
   onUserCodeProblem: (e, frameNumber) ->
+    console.log "GOALMANAGER", "level:user-code-problem", "onUserCodeProblem", e
     for goal in @goals ? [] when goal.codeProblems
       @checkCodeProblem goal.id, goal.codeProblems, e.thang, frameNumber
 
@@ -217,6 +214,7 @@ module.exports = class GoalManager extends CocoClass
     @updateGoalState goalID, thang.id, 'problems', frameNumber
 
   onLinesOfCodeCounted: (e, frameNumber) ->
+    console.log "GOALMANAGER", "level:lines-of-code-counted", "onLinesOfCodeCounted", e
     for goal in @goals ? [] when goal.linesOfCode
       @checkLinesOfCode goal.id, goal.linesOfCode, e.thang, e.linesUsed, frameNumber
 

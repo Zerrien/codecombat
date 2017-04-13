@@ -51,7 +51,8 @@ module.exports = class God extends CocoClass
       angelCount = 1
 
     # Don't generate all Angels at once.
-    _.delay (=> new Angel @angelsShare unless @destroyed), 250 * i for i in [0 ... angelCount]
+    #_.delay (=> new Angel @angelsShare unless @destroyed), 250 * i for i in [0 ... angelCount]
+    new Angel @angelsShare
 
   destroy: ->
     angel.destroy() for angel in @angelsShare.angels.slice()
@@ -73,6 +74,7 @@ module.exports = class God extends CocoClass
     @lastFixedSeed = e.fixedSeed
     @lastFlagHistory = (flag for flag in e.flagHistory when flag.source isnt 'code')
     @lastDifficulty = e.difficulty
+    console.log "TOME CASTED!"
     @createWorld e.spells, e.preload, e.realTime, e.justBegin
 
   createWorld: (spells, preload, realTime, justBegin) ->
@@ -96,6 +98,8 @@ module.exports = class God extends CocoClass
     return if hadPreloader
 
     @angelsShare.workQueue = []
+    console.log "User code map", userCodeMap
+    console.log "spells", spells
     work = {
       userCodeMap: userCodeMap
       @level
@@ -163,6 +167,7 @@ module.exports = class God extends CocoClass
         Backbone.Mediator.publish 'god:debug-world-load-progress-changed', progress: event.data.progress, god: @
 
   onNewWorldCreated: (e) ->
+    console.log "I'm all the way up here for whatever reason AHHHHHHHHH"
     @currentUserCodeMap = @filterUserCodeMapWhenFromWorld e.world.userCodeMap
 
   filterUserCodeMapWhenFromWorld: (worldUserCodeMap) ->

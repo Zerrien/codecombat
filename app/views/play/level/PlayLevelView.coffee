@@ -142,6 +142,15 @@ module.exports = class PlayLevelView extends RootView
     if me.isSessionless()
       levelLoaderOptions.fakeSessionConfig = {}
     @levelLoader = new LevelLoader levelLoaderOptions
+    @god = new God({
+      @gameUIState
+      indefiniteLength: false
+    })
+    #@tome = new TomeView { @levelID, @session, @otherSession, playLevelView: @, thangs: @world?.thangs ? [], @supermodel, @level, @observing, @courseID, @courseInstanceID, @god, @hintsState }
+    console.log "MATCH ME", @levelID, @session, @otherSession, @, @world?.thangs ? [], @supermodel, @level, @observing, @courseID, @courseInstanceID, @god, @hintsState
+    @setupGod() if @waitingToSetUpGod
+    # @createWorld e.spells, e.preload, e.realTime, e.justBegin
+    console.log @god.angelsShare.angels[0]
     @listenToOnce @levelLoader, 'world-necessities-loaded', @onWorldNecessitiesLoaded
     @listenTo @levelLoader, 'world-necessity-load-failed', @onWorldNecessityLoadFailed
 
@@ -150,12 +159,12 @@ module.exports = class PlayLevelView extends RootView
     if (me.isStudent() or me.isTeacher()) and not @courseID and not e.level.isType('course-ladder')
       return _.defer -> application.router.redirectHome()
 
-    unless e.level.isType('web-dev')
-      @god = new God({
-        @gameUIState
-        indefiniteLength: e.level.isType('game-dev')
-      })
-    @setupGod() if @waitingToSetUpGod
+    #unless e.level.isType('web-dev')
+      #@god = new God({
+      #  @gameUIState
+      #  indefiniteLength: e.level.isType('game-dev')
+      #})
+    #@setupGod() if @waitingToSetUpGod
 
   trackLevelLoadEnd: ->
     return if @isEditorPreview
@@ -282,6 +291,7 @@ module.exports = class PlayLevelView extends RootView
     @team = team
 
   initGoalManager: ->
+    console.log "initGoalManager", @world.goalManager
     @goalManager = new GoalManager(@world, @level.get('goals'), @team)
     @god?.setGoalManager @goalManager
 
@@ -300,6 +310,7 @@ module.exports = class PlayLevelView extends RootView
   insertSubviews: ->
     @hintsState = new HintsState({ hidden: true }, { @session, @level, @supermodel })
     @insertSubView @tome = new TomeView { @levelID, @session, @otherSession, playLevelView: @, thangs: @world?.thangs ? [], @supermodel, @level, @observing, @courseID, @courseInstanceID, @god, @hintsState }
+    console.log "MATCH ME", @levelID, @session, @otherSession, @, @world?.thangs ? [], @supermodel, @level, @observing, @courseID, @courseInstanceID, @god, @hintsState
     @insertSubView new LevelPlaybackView session: @session, level: @level unless @level.isType('web-dev')
     @insertSubView new GoalsView {level: @level}
     @insertSubView new LevelFlagsView levelID: @levelID, world: @world if @$el.hasClass 'flags'
@@ -676,6 +687,7 @@ module.exports = class PlayLevelView extends RootView
 
   onRestartLevel: ->
     @tome.reloadAllCode()
+    @world.goalManager.onlevelRestarted {}
     Backbone.Mediator.publish 'level:restarted', {}
     $('#level-done-button', @$el).hide()
     application.tracker?.trackEvent 'Confirmed Restart', category: 'Play Level', level: @level.get('name'), label: @level.get('name') unless @observing
@@ -712,9 +724,11 @@ module.exports = class PlayLevelView extends RootView
   # Dynamic sound loading
 
   onNewWorld: (e) ->
+    console.log "NOW I'M OVER HERE AHHHHHHHH"
     return if @headless
     scripts = @world.scripts  # Since these worlds don't have scripts, preserve them.
     @world = e.world
+    console.log @world.goalManager
     @world.scripts = scripts
     thangTypes = @supermodel.getModels(ThangType)
     startFrame = @lastWorldFramesLoaded ? 0

@@ -13,6 +13,7 @@ module.exports = class WebSurfaceView extends CocoView
 
   initialize: (options) ->
     @goals = (goal for goal in options.goalManager?.goals ? [] when goal.html)
+    @goalManager = options.goalManager
     # Consider https://www.npmjs.com/package/css-select to do this on virtualDom instead of in iframe on concreteDOM
     super(options)
 
@@ -81,7 +82,8 @@ module.exports = class WebSurfaceView extends CocoView
       return console.log 'Ignoring message from somewhere other than our iframe:', event.source
     switch event.data.type
       when 'goals-updated'
-        Backbone.Mediator.publish 'god:new-html-goal-states', goalStates: event.data.goalStates, overallStatus: event.data.overallStatus
+        @goalManager.onNewHTMLGoal goalStates: event.data.goalStates
+        #Backbone.Mediator.publish 'god:new-html-goal-states', goalStates: event.data.goalStates, overallStatus: event.data.overallStatus
       when 'error'
         # NOTE: The line number in this is relative to the script tag, not the user code. The offset is added in SpellView.
         Backbone.Mediator.publish 'web-dev:error', _.pick(event.data, ['message', 'line', 'column', 'url'])

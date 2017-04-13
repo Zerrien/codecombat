@@ -160,6 +160,7 @@ module.exports = class Angel extends CocoClass
     eventType = if finished then 'new-world-created' else 'streaming-world-updated'
     if finished
       @shared.world = world
+    @goalManager.onNewWorldCreated world: world, goalStates: goalStates
     @publishGodEvent eventType, world: world, firstWorld: @shared.firstWorld, goalStates: goalStates, team: me.team, firstChangedFrame: firstChangedFrame, finished: finished
     if finished
       for scriptNote in @shared.world.scriptNotes
@@ -338,6 +339,7 @@ module.exports = class Angel extends CocoClass
     return serialized
 
   onWorldLoaded: (args) =>
+    console.log "The world has been fully loaded"
     return if @world.framesSerializedSoFar is @world.frames.length
     @goalManager.worldGenerationEnded() if @world.ended
     t1 = new Date()
@@ -372,7 +374,6 @@ module.exports = class Angel extends CocoClass
       # Make sure we clean up memory as soon as possible, since we just used the most ever and don't want to crash.
     #  @destroyWorld()
     t2 = new Date()
-    messageType = if worldEnded then 'new-world' else 'some-frames-serialized'
 
     @streamingWorld = @world
     @finishBeholdingWorld(goalStates)(@world)
@@ -383,9 +384,10 @@ module.exports = class Angel extends CocoClass
     
 
   onWorldError: (args) =>
+    console.log "The world has an error"
 
   onWorldLoadProgress: (progress) =>
-    #console.log "ON WORLD LOAD PROGRESS", progress
+    console.log "ON WORLD LOAD PROGRESS", progress
     #self.postMessage({type: 'world-load-progress-changed', progress: progress});
     tProgress = if @work.indefiniteLength then Math.min(progress, 0.9) else progress
     @publishGodEvent('world-load-progress-changed', {progress: tProgress})
@@ -399,6 +401,7 @@ module.exports = class Angel extends CocoClass
       @world.framesSerializedSoFar = @world.frames.length
 
   onWorldPreloaded: (args) =>
+    console.log "The world has preloaded"
 
   onFlagEvent: (e) ->
     return unless @running and @work.realTime
@@ -418,45 +421,6 @@ module.exports = class Angel extends CocoClass
     return unless @running and not @work.realTime
     return if (new Date() - @lastRealTimeWork) < 1000  # Fires right after onStopRealTimePlayback
     @infinitelyLooped true
-
-  #### Synchronous code for running worlds on main thread (profiling / IE9) ####
-  simulateSync: (work) =>
-    console?.profile? "World Generation #{(Math.random() * 1000).toFixed(0)}" if imitateIE9?
-    work.t0 = now()
-    work.world = testWorld = new World work.userCodeMap
-    work.world.levelSessionIDs = work.levelSessionIDs
-    work.world.submissionCount = work.submissionCount
-    work.world.fixedSeed = work.fixedSeed
-    work.world.flagHistory = work.flagHistory ? []
-    work.world.difficulty = work.difficulty
-    work.world.loadFromLevel work.level
-    work.world.preloading = work.preload
-    work.world.headless = work.headless
-    work.world.realTime = work.realTime
-    if @shared.goalManager
-      testGM = new GoalManager(testWorld)
-      testGM.setGoals work.goals
-      testGM.setCode work.userCodeMap
-      testGM.worldGenerationWillBegin()
-      testWorld.setGoalManager testGM
-    @doSimulateWorld work
-    console?.profileEnd?() if imitateIE9?
-    console.log 'Construction:', (work.t1 - work.t0).toFixed(0), 'ms. Simulation:', (work.t2 - work.t1).toFixed(0), 'ms --', ((work.t2 - work.t1) / testWorld.frames.length).toFixed(3), 'ms per frame, profiled.'
-
-    # If performance was really a priority in IE9, we would rework things to be able to skip this step.
-    goalStates = testGM?.getGoalStates()
-    work.world.goalManager.worldGenerationEnded() if work.world.ended
-
-    if work.headless
-      simulationFrameRate = work.world.frames.length / (work.t2 - work.t1) * 1000 * 30 / work.world.frameRate
-      @beholdGoalStates {goalStates, overallStatus: testGM.checkOverallStatus(), preload: false, totalFrames: work.world.totalFrames, lastFrameHash: work.world.frames[work.world.totalFrames - 2]?.hash, simulationFrameRate: simulationFrameRate}
-      return
-
-    serialized = world.serialize()
-    window.BOX2D_ENABLED = false
-    World.deserialize serialized.serializedWorld, @shared.worldClassMap, @shared.lastSerializedWorldFrames, @finishBeholdingWorld(goalStates), serialized.startFrame, serialized.endFrame, work.level
-    window.BOX2D_ENABLED = true
-    @shared.lastSerializedWorldFrames = serialized.serializedWorld.frames
 
   doSimulateWorld: (work) ->
     work.t1 = now()
