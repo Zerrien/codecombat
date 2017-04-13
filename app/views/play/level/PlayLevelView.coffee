@@ -96,6 +96,7 @@ module.exports = class PlayLevelView extends RootView
   # Initial Setup #############################################################
 
   constructor: (options, @levelID) ->
+    console.log "PlayLevelView being born"
     console.profile?() if PROFILE_ME
     super options
 

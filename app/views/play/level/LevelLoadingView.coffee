@@ -122,6 +122,7 @@ module.exports = class LevelLoadingView extends CocoView
 
   unveil: (full) ->
     return if @destroyed or @unveiled
+    console.log "I'm unveiling"
     @unveiled = full
     @$loadingDetails = @$el.find('#loading-details')
     duration = parseFloat(@$loadingDetails.css 'transition-duration') * 1000

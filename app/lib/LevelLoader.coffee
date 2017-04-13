@@ -207,6 +207,7 @@ module.exports = class LevelLoader extends CocoClass
       @addSessionBrowserInfo session
       # hero-ladder games require the correct session team in level:loaded
       team = @team ? @session.get('team')
+      console.log "Level Loader says the level is loaded! Don't forget the 'level' and the 'team'."
       Backbone.Mediator.publish 'level:loaded', level: @level, team: team
       @publishedLevelLoaded = true
       Backbone.Mediator.publish 'level:session-loaded', level: @level, session: @session
