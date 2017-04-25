@@ -32,7 +32,10 @@ module.exports = class SuperModel extends Backbone.Model
     ids = (m.get('_id') for m in _.values(@models))
     return _.size(ids) - _.size(_.unique(ids))
 
+  thingObj2: {}
   loadModel: (model, name, fetchOptions, value=1) ->
+    @thingObj2[model.url()] ?= 0
+    @thingObj2[model.url()]++
     # Deprecating name. Handle if name is not included
     value = fetchOptions if _.isNumber(fetchOptions)
     fetchOptions = name if _.isObject(name)
@@ -109,8 +112,10 @@ module.exports = class SuperModel extends Backbone.Model
   shouldSaveBackups: (model) -> false
 
   # Caching logic
-
+  thingObj: {}
   getModel: (ModelClass_or_url, id) ->
+    @thingObj[ModelClass_or_url] ?= 0
+    @thingObj[ModelClass_or_url]++
     return @getModelByURL(ModelClass_or_url) if _.isString(ModelClass_or_url)
     m = new ModelClass_or_url(_id: id)
     return @getModelByURL(m.getURL())
@@ -277,6 +282,7 @@ class Resource extends Backbone.Model
     @trigger('loaded', @)
     @isLoaded = true
     @isLoading = false
+    console.log "done loading", (new Date()) - @t
 
   markFailed: ->
     return if @isLoaded
@@ -303,6 +309,7 @@ class ModelResource extends Resource
     @loadsAttempted = 0
 
   load: ->
+    @t = new Date()
     @markLoading()
     @fetchModel()
     @

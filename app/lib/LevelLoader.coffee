@@ -189,7 +189,8 @@ module.exports = class LevelLoader extends CocoClass
         @listenToOnce @opponentSession, 'sync', @loadDependenciesForSession
 
   loadDependenciesForSession: (session) ->
-    console.log "Loading dependencies for session: ", session if LOG
+    t5 = new Date()
+    console.log "Loading dependencies for session: ", session
     if me.id isnt session.get 'creator'
       session.patch = session.save = -> console.error "Not saving session, since we didn't create it."
     else if codeLanguage = utils.getQueryVariable 'codeLanguage'
@@ -208,6 +209,8 @@ module.exports = class LevelLoader extends CocoClass
       # hero-ladder games require the correct session team in level:loaded
       team = @team ? @session.get('team')
       console.log "Level Loader says the level is loaded! Don't forget the 'level' and the 'team'."
+      console.log @supermodel.thingObj
+      console.log @supermodel.thingObj2
       Backbone.Mediator.publish 'level:loaded', level: @level, team: team
       @publishedLevelLoaded = true
       Backbone.Mediator.publish 'level:session-loaded', level: @level, session: @session
@@ -253,6 +256,8 @@ module.exports = class LevelLoader extends CocoClass
     @sessionDependenciesRegistered[session.id] = true
     if _.size(@sessionDependenciesRegistered) is 2 and @checkAllWorldNecessitiesRegisteredAndLoaded()
       @onWorldNecessitiesLoaded()
+    t6 = new Date()
+    console.log "End of loadDependenciesForSession", t6 - t5
 
   loadCodeLanguagesForSession: (session) ->
     codeLanguages = _.uniq _.filter [session.get('codeLanguage') or 'python', session.get('submittedCodeLanguage')]
@@ -396,7 +401,7 @@ module.exports = class LevelLoader extends CocoClass
     true
 
   onWorldNecessitiesLoaded: ->
-    console.log "World necessities loaded." if LOG
+    console.log "World necessities loaded."
     return if @initialized
     @initialized = true
     @initWorld()

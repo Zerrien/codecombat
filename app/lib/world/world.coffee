@@ -407,6 +407,7 @@ module.exports = class World
     @goalManager.setGoalState(goalID, status)
 
   endWorld: (victory=false, delay=3, tentative=false) ->
+    @worldEnded = true
     @totalFrames = Math.min(@totalFrames, @frames.length + Math.floor(delay / @dt))  # end a few seconds later
     @victory = victory  # TODO: should just make this signify the winning superteam
     @victoryIsTentative = tentative

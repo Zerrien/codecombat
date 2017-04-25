@@ -261,7 +261,10 @@ module.exports = class GoalManager extends CocoClass
   setGoalState: (goalID, status) ->
     state = @goalStates[goalID]
     state.status = status
-    if overallStatus = @checkOverallStatus true
+    @checkEndOfWorld()
+
+  checkEndOfWorld: ->
+    if overallStatus = @checkOverallStatus true and not @world.worldEnded
       matchedGoals = (_.find(@goals, {id: goalID}) for goalID, goalState of @goalStates when goalState.status is overallStatus)
       mostEagerGoal = _.min matchedGoals, 'worldEndsAfter'
       victory = overallStatus is 'success'
@@ -288,12 +291,7 @@ module.exports = class GoalManager extends CocoClass
     state.status = if success then 'success' else 'failure'
     state.keyFrame = frameNumber
     #console.log goalID, 'became', success, 'on frame', frameNumber, 'with overallStatus', @checkOverallStatus true
-    if overallStatus = @checkOverallStatus true
-      matchedGoals = (_.find(@goals, {id: goalID}) for goalID, goalState of @goalStates when goalState.status is overallStatus)
-      mostEagerGoal = _.min matchedGoals, 'worldEndsAfter'
-      victory = overallStatus is 'success'
-      tentative = overallStatus is 'success'
-      @world?.endWorld victory, mostEagerGoal.worldEndsAfter, tentative if mostEagerGoal isnt Infinity
+    @checkEndOfWorld()
 
   goalIsPositive: (goalID) ->
     # Positive goals are completed when all conditions are true (kill all these thangs)
