@@ -141,7 +141,6 @@ class Rectangle
     false
 
   intersectsRectangle: (rectangle) ->
-    console.log "rect"
     return true if @containsPoint rectangle.getPos()
     for thisLineSegment in @lineSegments()
       for thatLineSegment in rectangle.lineSegments()
@@ -150,7 +149,6 @@ class Rectangle
     false
 
   intersectsEllipse: (ellipse) ->
-    console.log "ellipse"
     return true if @containsPoint ellipse.getPos()
     return true for lineSegment in @lineSegments() when ellipse.intersectsLineSegment lineSegment.a, lineSegment.b
     false
